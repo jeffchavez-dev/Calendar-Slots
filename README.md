@@ -7,9 +7,9 @@ Freeslot is a small Chrome extension. Mark open times directly on your calendar 
 ```
 Jumping in to help find a time for you to connect. Below are a few openings on our end, please let me know if you need more options.
 
-• Thu Oct 8: 2–3:45pm ET
-• Mon Oct 12: 3–5pm ET
-• Mon Oct 19: 9:30–11am, 1:30–4pm ET
+• Thu Oct 8: 2:00–3:45pm ET
+• Mon Oct 12: 3:00–5:00pm ET
+• Mon Oct 19: 9:30–11:00am, 1:30–4:00pm ET
 
 Let me know what works best and I'll send across a calendar invite.
 Best,
@@ -37,7 +37,7 @@ Nothing is written to your calendar. No account, no server, no tracking.
 - **Agenda mode**: click events on your calendar, or drag across them, to get a `time — title` list of your schedule.
 - **Copy** pastes as a real bulleted list in Gmail, Google Docs and Slack, and as plain `•` bullets anywhere else.
 - **Email** opens a Gmail draft with the message already filled in.
-- **Formats**: short, medium or long dates, and 12- or 24-hour times.
+- **Formats**: short, medium or long dates, and `2:00pm`, compact `2pm`, or 24-hour times.
 
 ## Install
 
@@ -83,7 +83,7 @@ Freeslot isn't on the Chrome Web Store. You load it from a folder, which takes a
 
 The **Availability** and **Agenda** tabs keep separate lists. **Clear all** only clears the tab you're on.
 
-While Freeslot is on, clicking the calendar marks time instead of creating events. Turn it off to use Calendar normally.
+While Freeslot is open, clicking the calendar marks free time (Availability) or picks events (Agenda) instead of creating or opening events. Click **Done** to use Calendar normally.
 
 ## Settings
 
@@ -92,7 +92,7 @@ Click the **gear icon** in the panel.
 | Setting | What it does |
 |---|---|
 | Opening message | The paragraph before the availability list. Leave it blank to skip it. |
-| Closing message | The text after the list, such as a sign-off. Leave it blank to skip it. |
+| Closing message | The text after the availability list, such as a sign-off. Leave it blank to skip it. |
 | Date format | `10/8`, `Thu Oct 8` (default), or `Thursday, Oct 8` |
 | Time format | `2:00–3:45pm`, compact `2–3:45pm`, or 24-hour `14:00–15:45` |
 | Include timezone in text | Adds `ET`, `PT` and so on to the end of each line |
@@ -123,6 +123,7 @@ If you had slots marked before updating, click **Clear all** and mark them again
 | No **Offer times** button | Reload the Calendar tab. The button only appears on `calendar.google.com`. |
 | "Switch to Day or Week view" | Month, Year and Schedule views don't have a time grid. |
 | Dragging creates Calendar events or feels jumpy | Turn off other Calendar extensions that also handle clicks on the grid, then reload. |
+| Agenda shows the wrong title, or times like `10:00–10:15am` for a task | Tasks and some event types don't include a clock time, so Freeslot estimates it from the grid. Edit the copied text if needed. |
 | Times are off by several hours | Click **Clear all** and mark the slots again. Slots from older versions were saved with a different timezone assumption. |
 
 ## Privacy and permissions
