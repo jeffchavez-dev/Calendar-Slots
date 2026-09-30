@@ -84,12 +84,18 @@
     return cols;
   }
 
-  function clipRect(cell) {
+  // The scrolling container that holds the timed grid (not the all-day row above it).
+  function scrollerOf(cell) {
     for (let p = cell.parentElement; p && p !== document.body; p = p.parentElement) {
       const oy = getComputedStyle(p).overflowY;
-      if (oy === 'scroll' || oy === 'auto') return p.getBoundingClientRect();
+      if (oy === 'scroll' || oy === 'auto') return p;
     }
-    return { top: 0, bottom: innerHeight };
+    return null;
+  }
+
+  function clipRect(cell) {
+    const sc = scrollerOf(cell);
+    return sc ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight };
   }
 
   function colAt(x, y) {
@@ -315,7 +321,21 @@
     return { id, key: `${col.key}|${id}`, start: dayMs(col, s), end: dayMs(col, e), title };
   }
 
-  const chipsIn = (col) => [...col.cell.querySelectorAll('[data-eventchip][data-eventid]')];
+  // Match events to a day by where they sit on screen, not by DOM nesting: Calendar
+  // sometimes draws events in a layer beside the day columns rather than inside them.
+  const centerIn = (el, col) => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    return r.height > 0 && cx >= col.rect.left && cx < col.rect.right;
+  };
+
+  function chipsIn(col) {
+    const scope = scrollerOf(col.cell) || col.cell;
+    return [...scope.querySelectorAll('[data-eventchip][data-eventid]')].filter((ch) => centerIn(ch, col));
+  }
+
+  const colOfChip = (chip, cols) => cols.find((c) => c.cell.contains(chip)) ||
+    cols.find((c) => centerIn(chip, c) && (scrollerOf(c.cell) || c.cell).contains(chip));
 
   const agendaCss = document.createElement('style');
   document.documentElement.appendChild(agendaCss);
@@ -544,7 +564,7 @@
       state.drag = null;
       const cols = getColumns();
       if (!d.moved) {
-        const col = d.chip && cols.find((c) => c.cell.contains(d.chip));
+        const col = d.chip && colOfChip(d.chip, cols);
         if (col) toggleChip(d.chip, col);
       } else if (d.range) {
         pickRange(cols, d.range.i0, d.range.i1, d.range.a, d.range.b);
