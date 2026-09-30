@@ -46,12 +46,12 @@ Freeslot isn't on the Chrome Web Store. You load it from a folder, which takes a
 1. **Get the code.** On this GitHub page, click the green **Code** button, choose **Download ZIP**, and unzip it.
    You can also clone it with git:
    ```bash
-   git clone https://github.com/<your-username>/freeslot.git
+   git clone https://github.com/jeffchavez-dev/Calender-Slots.git
    ```
-2. **Move the folder somewhere permanent**, for example `Documents/freeslot`. Chrome runs the extension from this folder, so don't delete it.
+2. **Move the folder somewhere permanent**, for example `Documents/Calender-Slots`. Chrome runs the extension from this folder, so don't delete it.
 3. Open **`chrome://extensions`** in Chrome.
 4. Turn on **Developer mode** (the switch in the top-right corner).
-5. Click **Load unpacked** and select the `freeslot` folder, the one that contains `manifest.json`.
+5. Click **Load unpacked** and select the `Calender-Slots` folder, the one that contains `manifest.json`. (A downloaded ZIP unzips as `Calender-Slots-main`, which works too.)
    Don't click **Pack extension**. That creates a file for publishing and doesn't install anything.
 6. Optional: click the puzzle-piece icon in Chrome's toolbar and pin **Freeslot**.
 7. Open or reload **[Google Calendar](https://calendar.google.com)** and switch to **Day** or **Week** view.
@@ -107,7 +107,7 @@ To see a second zone while you pick times, turn on **Settings → Time zone → 
 
 ## Updating
 
-- **Downloaded ZIP:** download the new version, replace the files in your `freeslot` folder, then go on to the next step.
+- **Downloaded ZIP:** download the new version, replace the files in your extension folder, then go on to the next step.
 - **Cloned with git:** run `git pull` in the folder.
 
 Then open `chrome://extensions`, click the **↻ reload** arrow on the Freeslot card, and reload Google Calendar.
@@ -146,7 +146,7 @@ Freeslot only reads the time and title of events you pick in **Agenda** mode, an
 ## Project structure
 
 ```
-freeslot/
+Calender-Slots/
 ├── manifest.json    Chrome extension manifest (Manifest V3)
 ├── background.js    Toolbar button and keyboard shortcut
 ├── content.js       Calendar overlay, drag handling, panel and message formatting
