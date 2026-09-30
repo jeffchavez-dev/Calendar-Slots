@@ -15,6 +15,15 @@ Let me know what works best and I'll send across a calendar invite.
 Best,
 ```
 
+It can also turn events you've already scheduled into a quick agenda:
+
+```
+• 8:30–9:00am — EIBC and Resilience Energy on interconnection
+• 9:00–9:45am — Annie // Jay // Ameet
+• 10:00–10:30am — Stand Together // Resilience
+• 11:00am–1:30pm — Resilience at Lunar Energy
+```
+
 Nothing is written to your calendar. No account, no server, no tracking.
 
 ---
@@ -25,6 +34,7 @@ Nothing is written to your calendar. No account, no server, no tracking.
 - **Edit slots after you make them**: drag the middle to move a slot (to another time or day), or drag its top or bottom edge to change the start or end.
 - **Timezone presets**: switch the message between **ET, MT, PT** in one click, or pick any other zone under **More**. Times and dates are converted for you, including daylight saving.
 - **Bulleted message** with an opening and a closing line you can edit.
+- **Agenda mode**: click events on your calendar, or drag across them, to get a `time — title` list of your schedule.
 - **Copy** pastes as a real bulleted list in Gmail, Google Docs and Slack, and as plain `•` bullets anywhere else.
 - **Email** opens a Gmail draft with the message already filled in.
 - **Formats**: short, medium or long dates, and 12- or 24-hour times.
@@ -64,6 +74,15 @@ Freeslot isn't on the Chrome Web Store. You load it from a folder, which takes a
 5. Click **Copy** (⌘C / Ctrl+C) or **Email** (⌘⇧E / Ctrl+Shift+E).
 6. Click **Done** or press **Esc** to stop selecting. Your slots stay until you click **Clear all**.
 
+### Agenda: turn events into a list
+
+1. Open the panel and switch to the **Agenda** tab.
+2. **Click an event** to add it to the list, and click it again to remove it. Selected events get an amber outline.
+3. Or **drag across the calendar** to add every event in that time range, across several days if you like.
+4. Click **Copy**. Each line reads `8:30–9:00am — Event title`. When the list covers more than one day, each day gets a heading.
+
+The **Availability** and **Agenda** tabs keep separate lists. **Clear all** only clears the tab you're on.
+
 While Freeslot is on, clicking the calendar marks time instead of creating events. Turn it off to use Calendar normally.
 
 ## Settings
@@ -72,10 +91,10 @@ Click the **gear icon** in the panel.
 
 | Setting | What it does |
 |---|---|
-| Opening message | The paragraph before the list. Leave it blank to skip it. |
+| Opening message | The paragraph before the availability list. Leave it blank to skip it. |
 | Closing message | The text after the list, such as a sign-off. Leave it blank to skip it. |
 | Date format | `10/8`, `Thu Oct 8` (default), or `Thursday, Oct 8` |
-| Time format | `2–3:45pm` or `14:00–15:45` |
+| Time format | `2:00–3:45pm`, compact `2–3:45pm`, or 24-hour `14:00–15:45` |
 | Include timezone in text | Adds `ET`, `PT` and so on to the end of each line |
 
 Settings are saved in Chrome and kept between sessions.
@@ -114,13 +133,14 @@ If you had slots marked before updating, click **Clear all** and mark them again
 | `storage` | To remember your slots and settings, in your browser only |
 | `scripting` | To start Freeslot on a Calendar tab that was already open when you installed it |
 
-Freeslot doesn't read your events, doesn't change your calendar, and doesn't send data anywhere. **Email** opens a Gmail draft in a new tab, and nothing is sent until you press Send.
+Freeslot only reads the time and title of events you pick in **Agenda** mode, and only on your screen. It never changes your calendar or sends data anywhere. **Email** opens a Gmail draft in a new tab, and nothing is sent until you press Send.
 
 ## Limitations
 
 - Works in Day and Week views, not Month, Year or Schedule.
 - Relies on Google Calendar's page structure. If Google redesigns Calendar, Freeslot may need an update.
 - English date and time formatting only.
+- Agenda mode reads event times from Google Calendar's labels, and those labels are in English. Tasks and other events without a clock time in their label are timed by their position on the grid, rounded to 15 minutes.
 
 ## Project structure
 

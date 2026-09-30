@@ -37,18 +37,20 @@
     'Asia/Tokyo', 'Australia/Sydney', 'Pacific/Auckland', 'UTC',
   ];
 
-  const state = { active: false, slots: [], settings: { ...DEFAULTS }, view: 'main', drag: null };
+  // mode: 'offer' (mark free time) or 'agenda' (pick existing events → "time — title" list)
+  const state = { active: false, mode: 'offer', slots: [], agenda: [], settings: { ...DEFAULTS }, view: 'main', drag: null };
 
   /* ---------- storage ---------- */
 
   function save() {
-    if (hasStore) chrome.storage.local.set({ fsSlots: state.slots, fsSettings: state.settings });
+    if (hasStore) chrome.storage.local.set({ fsSlots: state.slots, fsAgenda: state.agenda, fsSettings: state.settings });
   }
 
   async function load() {
     if (!hasStore) return;
-    const r = await chrome.storage.local.get(['fsSlots', 'fsSettings']);
+    const r = await chrome.storage.local.get(['fsSlots', 'fsAgenda', 'fsSettings']);
     state.slots = r.fsSlots || [];
+    state.agenda = r.fsAgenda || [];
     state.settings = { ...DEFAULTS, ...(r.fsSettings || {}) };
   }
 
@@ -176,18 +178,20 @@
     return tz.split('/').pop().replace(/_/g, ' ');
   }
 
-  function fmtTime(min, h24, withMer = true) {
+  // tf: '12' → 2:00pm, '12c' → 2pm, '24' → 14:00
+  function fmtTime(min, tf, withMer = true) {
     const h = Math.floor(min / 60) % 24;
     const m = min % 60;
-    if (h24) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const mm = String(m).padStart(2, '0');
+    if (tf === '24') return `${String(h).padStart(2, '0')}:${mm}`;
     const hh = h % 12 || 12;
-    return `${hh}${m ? ':' + String(m).padStart(2, '0') : ''}${withMer ? (h < 12 ? 'am' : 'pm') : ''}`; // 2pm, 3:45pm
+    return `${hh}${tf === '12c' && !m ? '' : ':' + mm}${withMer ? (h < 12 ? 'am' : 'pm') : ''}`;
   }
 
-  function fmtRange(s, e, h24) {
-    if (h24) return `${fmtTime(s, true)}–${fmtTime(e, true)}`;
+  function fmtRange(s, e, tf) {
+    if (tf === '24') return `${fmtTime(s, tf)}–${fmtTime(e, tf)}`;
     const sameMer = Math.floor(s / 720) === Math.floor(e / 720) && e < 1440;
-    return `${fmtTime(s, false, !sameMer)}–${fmtTime(e, false)}`;
+    return `${fmtTime(s, tf, !sameMer)}–${fmtTime(e, tf)}`;
   }
 
   function fmtDate(y, m, d, style) {
@@ -202,7 +206,6 @@
   function buildParts() {
     const { timeFormat, dateFormat, showTz, introText, closing } = state.settings;
     const tz = msgTz();
-    const h24 = timeFormat === '24';
     const days = [];
     for (const s of normalize(state.slots)) {
       const a = partsIn(s.start, tz);
@@ -214,23 +217,137 @@
     }
     if (!days.length) return null;
     const zone = showTz ? ` ${tzLabel(tz, state.slots[0].start)}` : '';
-    const lines = days.map((d) => `${d.label}: ${d.ranges.map((r) => fmtRange(r.s, r.e, h24)).join(', ')}${zone}`);
+    const lines = days.map((d) => `${d.label}: ${d.ranges.map((r) => fmtRange(r.s, r.e, timeFormat)).join(', ')}${zone}`);
     return { intro: introText.trim(), lines, closing: closing.trim() };
   }
 
-  function buildMessage() {
+  function offerMessage() {
     const p = buildParts();
     if (!p) return '';
     return [p.intro, p.lines.map((l) => `• ${l}`).join('\n'), p.closing].filter(Boolean).join('\n\n');
   }
 
   // Rich version so pasting into Gmail/Docs gives a real bulleted list.
-  function buildHtml() {
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  function offerHtml() {
     const p = buildParts();
     if (!p) return '';
-    const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const para = (t) => (t ? `<p>${esc(t).replace(/\n/g, '<br>')}</p>` : '');
     return para(p.intro) + `<ul>${p.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` + para(p.closing);
+  }
+
+  // Agenda: one "8:30–9:00am — Title" line per picked event, grouped by day.
+  // Day headings only appear for multi-day lists or when converting to another zone.
+  function agendaParts() {
+    if (!state.agenda.length) return null;
+    const { timeFormat, dateFormat, showTz } = state.settings;
+    const tz = msgTz();
+    const converted = tz !== calTz();
+    const days = [];
+    for (const ev of [...state.agenda].sort((a, b) => a.start - b.start || a.end - b.end)) {
+      const a = partsIn(ev.start, tz);
+      const key = `${a.y}-${a.m}-${a.d}`;
+      const e = a.min + Math.round((ev.end - ev.start) / 60000);
+      const line = `${fmtRange(a.min, e, timeFormat)} — ${ev.title}`;
+      const last = days[days.length - 1];
+      if (last && last.key === key) last.lines.push(line);
+      else days.push({ key, head: fmtDate(a.y, a.m, a.d, dateFormat) + (converted && showTz ? ` (${tzLabel(tz, ev.start)})` : ''), lines: [line] });
+    }
+    return { days, heads: days.length > 1 || converted };
+  }
+
+  function agendaMessage() {
+    const p = agendaParts();
+    if (!p) return '';
+    return p.days.map((d) => (p.heads ? d.head + '\n' : '') + d.lines.map((l) => `• ${l}`).join('\n')).join('\n\n');
+  }
+
+  function agendaHtml() {
+    const p = agendaParts();
+    if (!p) return '';
+    return p.days.map((d) => (p.heads ? `<p><strong>${esc(d.head)}</strong></p>` : '') +
+      `<ul>${d.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`).join('');
+  }
+
+  const buildMessage = () => (state.mode === 'agenda' ? agendaMessage() : offerMessage());
+  const buildHtml = () => (state.mode === 'agenda' ? agendaHtml() : offerHtml());
+
+  /* ---------- reading Google Calendar events ---------- */
+
+  // Hidden accessibility label on each event starts like "10am to 11:30am, Title, …"
+  const LABEL_TIME = /^(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s+to\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)(?=,|\s|$)/i;
+  const TIMEISH = /^(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?(?:\s*[–-]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?|[,\s·–-]*)$/i;
+
+  function parseClock(t, fallbackMer) {
+    const m = t.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+    if (!m) return null;
+    let h = +m[1];
+    const mer = m[3] || fallbackMer;
+    if (mer) h = (h % 12) + (mer === 'pm' ? 12 : 0);
+    return h * 60 + +(m[2] || 0);
+  }
+
+  function readChip(chip, col) {
+    const leaves = [...chip.querySelectorAll('*')].filter((k) => !k.children.length && k.textContent.trim());
+    const hidden = (k) => { const r = k.getBoundingClientRect(); return r.width <= 1 || r.height <= 1; };
+    const label = ((leaves.find(hidden) || {}).textContent || chip.getAttribute('aria-label') || '').trim();
+
+    let s = null, e = null;
+    const m = label.match(LABEL_TIME);
+    if (m) {
+      const endMer = (m[2].match(/am|pm/i) || [])[0];
+      s = parseClock(m[1], endMer && endMer.toLowerCase());
+      e = parseClock(m[2]);
+      if (s != null && e != null && e <= s) e += 1440;
+    }
+    if (s == null || e == null) { // fall back to where the chip sits on the grid
+      const r = chip.getBoundingClientRect();
+      const r5 = (x) => Math.round(x / 5) * 5;
+      s = r5(((r.top - col.rect.top) / col.rect.height) * 1440);
+      e = s + Math.max(15, Math.round(((r.height / col.rect.height) * 1440) / 15) * 15);
+    }
+
+    const visible = leaves.filter((k) => !hidden(k) && !TIMEISH.test(k.textContent.trim()));
+    let title = visible.length ? visible[0].textContent : m ? label.slice(m[0].length).replace(/^,\s*/, '').split(', ')[0] : '';
+    title = title.replace(/\s+/g, ' ').trim() || '(No title)';
+    const id = chip.dataset.eventid;
+    return { id, key: `${col.key}|${id}`, start: dayMs(col, s), end: dayMs(col, e), title };
+  }
+
+  const chipsIn = (col) => [...col.cell.querySelectorAll('[data-eventchip][data-eventid]')];
+
+  const agendaCss = document.createElement('style');
+  document.documentElement.appendChild(agendaCss);
+  function paintAgenda() {
+    const sel = [...new Set(state.agenda.map((a) => a.id))].map((id) => `html.fs-on [data-eventid="${CSS.escape(id)}"]`);
+    agendaCss.textContent = sel.length
+      ? `${sel.join(',')} { outline:2px solid #FFB020 !important; outline-offset:1px; box-shadow:0 0 0 4px rgba(255,176,32,.3) !important; }`
+      : '';
+  }
+
+  function toggleChip(chip, col) {
+    const ev = readChip(chip, col);
+    const i = state.agenda.findIndex((a) => a.key === ev.key);
+    if (i >= 0) state.agenda.splice(i, 1);
+    else state.agenda.push(ev);
+  }
+
+  function pickRange(cols, i0, i1, a, b) {
+    for (const col of cols.slice(i0, i1 + 1)) {
+      const from = dayMs(col, a), to = dayMs(col, b);
+      for (const chip of chipsIn(col)) {
+        const ev = readChip(chip, col);
+        if (ev.start < to && ev.end > from && !state.agenda.some((x) => x.key === ev.key)) state.agenda.push(ev);
+      }
+    }
+  }
+
+  function commitAgenda() {
+    save();
+    paintAgenda();
+    renderBlocks();
+    updatePanel();
   }
 
   /* ---------- blocks on the calendar ---------- */
@@ -268,6 +385,7 @@
     html.fs-resizing, html.fs-resizing * { cursor:ns-resize !important; }
     .fs-live .fs-block:hover .fs-x { opacity:1; }
     html.fs-on [role="main"] [role="gridcell"] { cursor:crosshair !important; }
+    html.fs-on.fs-agenda [role="main"] [data-eventchip] { cursor:pointer !important; }
   `;
   document.documentElement.appendChild(pageCss);
 
@@ -277,18 +395,18 @@
   }
 
   function renderBlocks() {
-    const h24 = state.settings.timeFormat === '24';
+    const tf = state.settings.timeFormat;
     for (const col of getColumns()) {
       const ds = dayMs(col, 0);
       const de = dayMs(col, 1440);
       const items = [];
-      for (const s of state.slots) {
+      for (const s of state.mode === 'offer' ? state.slots : []) {
         const a = Math.max(s.start, ds), b = Math.min(s.end, de);
         if (a < b) items.push({ a, b });
       }
       if (state.drag) for (const p of state.drag.preview) if (p.key === col.key) items.push({ a: p.start, b: p.end, preview: true });
 
-      const sig = `${state.active}|${h24}|${JSON.stringify(items)}`;
+      const sig = `${state.active}|${state.mode}|${tf}|${JSON.stringify(items)}`;
       let layer = col.cell.querySelector(':scope > .fs-layer');
       if (!layer) {
         if (!items.length) continue;
@@ -304,7 +422,7 @@
         const s = minuteOfDay(a, col), e = minuteOfDay(b, col);
         const top = (s / 1440) * 100, height = ((e - s) / 1440) * 100;
         return `<div class="fs-block${preview ? ' fs-preview' : ''}" data-a="${a}" data-b="${b}" style="top:${top}%;height:${height}%">
-          <span class="fs-time">${fmtRange(s, e, h24)}</span>${preview ? '' :
+          <span class="fs-time">${fmtRange(s, e, tf)}</span>${preview ? '' :
             '<button class="fs-x" title="Remove">×</button><div class="fs-h fs-top" title="Drag to change start"></div><div class="fs-h fs-bot" title="Drag to change end"></div>'}</div>`;
       }).join('');
     }
@@ -334,12 +452,14 @@
   // mode: 'new' (paint a slot), 'move' (whole block), 'start' / 'end' (resize an edge)
   function updatePreview(cols, e) {
     const d = state.drag;
-    if (d.mode === 'new') {
+    if (d.mode === 'new' || d.mode === 'pick') {
       const lo = Math.min(d.startMin, d.curMin);
       const hi = Math.max(d.startMin, d.curMin) + SNAP;
       const [a, b] = d.moved ? [lo, hi] : [d.startMin, Math.min(1440, d.startMin + CLICK_LEN)];
       const i0 = Math.min(d.startIdx, d.curIdx), i1 = Math.max(d.startIdx, d.curIdx);
-      d.preview = cols.slice(i0, i1 + 1).map((c) => ({ key: c.key, start: dayMs(c, a), end: dayMs(c, b) }));
+      d.range = { i0, i1, a, b };
+      d.preview = d.mode === 'pick' && !d.moved ? []
+        : cols.slice(i0, i1 + 1).map((c) => ({ key: c.key, start: dayMs(c, a), end: dayMs(c, b) }));
     } else {
       const col = d.mode === 'move' && e ? cols[colIndexAt(cols, e.clientX)] : cols.find((c) => c.key === d.key) || cols[0];
       const delta = e ? snapDelta(e.clientY - d.y0, col) : 0;
@@ -375,6 +495,12 @@
     if (!col) return;
     stop(e);
     const t = e.target.closest ? e.target : e.target.parentElement;
+    if (state.mode === 'agenda') {
+      const m = minutesAt(col, e.clientY);
+      state.drag = { mode: 'pick', chip: t.closest('[data-eventchip]'), x0: e.clientX, y0: e.clientY, moved: false, preview: [],
+        startIdx: col.i, curIdx: col.i, startMin: m, curMin: m };
+      return;
+    }
     const block = t.closest('.fs-block');
     if (t.closest('.fs-x')) {
       subtract(+block.dataset.a, +block.dataset.b);
@@ -403,7 +529,7 @@
     if (Math.abs(e.clientX - d.x0) + Math.abs(e.clientY - d.y0) > 4) d.moved = true;
     const cols = getColumns();
     if (!cols.length) return;
-    if (d.mode === 'new') {
+    if (d.mode === 'new' || d.mode === 'pick') {
       d.curIdx = colIndexAt(cols, e.clientX);
       d.curMin = minutesAt(cols[d.curIdx], e.clientY);
     }
@@ -414,6 +540,18 @@
     const d = state.drag;
     if (!d) return;
     stop(e);
+    if (d.mode === 'pick') {
+      state.drag = null;
+      const cols = getColumns();
+      if (!d.moved) {
+        const col = d.chip && cols.find((c) => c.cell.contains(d.chip));
+        if (col) toggleChip(d.chip, col);
+      } else if (d.range) {
+        pickRange(cols, d.range.i0, d.range.i1, d.range.a, d.range.b);
+      }
+      commitAgenda();
+      return;
+    }
     if (d.mode !== 'new' && !d.moved) { cancelDrag(); return; }
     state.drag = null;
     document.documentElement.classList.remove('fs-moving', 'fs-resizing');
@@ -476,6 +614,13 @@
   header { display:flex; align-items:center; gap:8px; padding: 14px 16px 0; }
   .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px rgba(255,176,32,.18); }
   .eyebrow { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); flex:1; }
+  .tabs { display:flex; gap:16px; flex:1; }
+  .tab {
+    background:none; border:0; padding:3px 0; border-bottom:2px solid transparent;
+    font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); }
   .link { background:none; border:0; padding:4px 2px; font-weight:600; color:var(--accent); }
   .link:hover { text-decoration: underline; text-underline-offset: 3px; }
   .body { padding: 12px 16px 14px; }
@@ -555,7 +700,12 @@
   <button class="fab" title="Offer times (Alt+Shift+O)"><span class="swatch"></span>Offer times<span class="badge" hidden></span></button>
   <div class="panel" hidden>
     <header>
-      <span class="dot"></span><span class="eyebrow">Your availability</span>
+      <span class="dot"></span>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-mode="offer">Availability</button>
+        <button class="tab" role="tab" data-mode="agenda">Agenda</button>
+      </div>
+      <span class="eyebrow" hidden>Settings</span>
       <button class="link done">Done</button>
     </header>
     <div class="body main">
@@ -587,8 +737,9 @@
       </div>
       <div class="field"><span>Time format</span>
         <div class="seg" data-key="timeFormat">
-          <button data-v="12">12-hour<small>2–3:45pm</small></button>
-          <button data-v="24">24-hour<small>09:30</small></button>
+          <button data-v="12">12-hour<small>2:00–3:45pm</small></button>
+          <button data-v="12c">Compact<small>2–3:45pm</small></button>
+          <button data-v="24">24-hour<small>14:00</small></button>
         </div>
       </div>
       <div class="field toggle"><span style="margin:0">Include timezone in text</span><button class="switch showtz" role="switch"></button></div>
@@ -605,7 +756,7 @@
 
   const $ = (s) => root.querySelector(s);
   const ui = {
-    fab: $('.fab'), badge: $('.badge'), panel: $('.panel'), eyebrow: $('.eyebrow'),
+    fab: $('.fab'), badge: $('.badge'), panel: $('.panel'), eyebrow: $('.eyebrow'), tabs: $('.tabs'),
     main: $('.main'), settings: $('.settings'), empty: $('.empty'), preview: $('.preview'),
     tz: $('.tz'), tzlabel: $('.tzlabel'), pills: $('.pills'), more: $('.more'), copy: $('.copy'), email: $('.email'),
     intro: $('.intro'), closing: $('.closing'), showtz: $('.showtz'), gear: $('.gear'), clear: $('.clear'),
@@ -623,13 +774,17 @@
   }
 
   function updatePanel() {
-    const n = state.slots.length;
+    const agenda = state.mode === 'agenda';
+    const n = agenda ? state.agenda.length : state.slots.length;
     const msg = buildMessage();
     ui.fab.hidden = state.active;
     ui.panel.hidden = !state.active;
-    ui.badge.hidden = !n;
-    ui.badge.textContent = n;
-    ui.eyebrow.textContent = state.view === 'settings' ? 'Settings' : 'Your availability';
+    const total = state.slots.length + state.agenda.length;
+    ui.badge.hidden = !total;
+    ui.badge.textContent = total;
+    ui.tabs.hidden = state.view === 'settings';
+    ui.eyebrow.hidden = state.view !== 'settings';
+    ui.tabs.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === state.mode)));
     ui.main.hidden = state.view !== 'main';
     ui.settings.hidden = state.view !== 'settings';
     ui.gear.style.color = state.view === 'settings' ? 'var(--accent)' : '';
@@ -637,9 +792,11 @@
     ui.preview.hidden = !msg;
     ui.preview.innerHTML = buildHtml();
     ui.empty.hidden = !!msg;
-    ui.empty.innerHTML = getColumns().length
-      ? '<b>Drag on the calendar</b> to mark times you’re free. Drag across days to repeat the same slot.'
-      : 'Switch to <b>Day</b> or <b>Week</b> view to start marking free times.';
+    ui.empty.innerHTML = !getColumns().length
+      ? 'Switch to <b>Day</b> or <b>Week</b> view to get started.'
+      : agenda
+        ? '<b>Click events</b> to add them to the list. Drag across the calendar to grab several at once.'
+        : '<b>Drag on the calendar</b> to mark times you’re free. Drag across days to repeat the same slot.';
     ui.copy.disabled = ui.email.disabled = !msg;
     ui.clear.style.visibility = n ? 'visible' : 'hidden';
 
@@ -667,6 +824,15 @@
     state.active = v;
     if (!v) state.view = 'main';
     document.documentElement.classList.toggle('fs-on', v);
+    renderBlocks();
+    updatePanel();
+  }
+
+  function setMode(m) {
+    if (state.drag) cancelDrag();
+    state.mode = m;
+    state.view = 'main';
+    document.documentElement.classList.toggle('fs-agenda', m === 'agenda');
     renderBlocks();
     updatePanel();
   }
@@ -711,7 +877,7 @@
   function email() {
     const msg = buildMessage();
     if (!msg) return;
-    const url = 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent('Availability') + '&body=' + encodeURIComponent(msg);
+    const url = 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent(state.mode === 'agenda' ? 'Agenda' : 'Availability') + '&body=' + encodeURIComponent(msg);
     window.open(url, '_blank', 'noopener');
   }
 
@@ -719,7 +885,13 @@
   $('.done').addEventListener('click', () => setActive(false));
   ui.copy.addEventListener('click', copy);
   ui.email.addEventListener('click', email);
-  ui.clear.addEventListener('click', () => { state.slots = []; commit(); });
+  ui.clear.addEventListener('click', () => {
+    if (state.mode === 'agenda') { state.agenda = []; commitAgenda(); } else { state.slots = []; commit(); }
+  });
+  ui.tabs.addEventListener('click', (e) => {
+    const b = e.target.closest('.tab');
+    if (b) setMode(b.dataset.mode);
+  });
   ui.gear.addEventListener('click', () => setView(state.view === 'settings' ? 'main' : 'settings'));
   ui.tz.addEventListener('change', () => setSetting('tz', ui.tz.value));
   ui.pills.addEventListener('click', (e) => {
@@ -741,6 +913,7 @@
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'local') return;
       if (changes.fsSlots) state.slots = changes.fsSlots.newValue || [];
+      if (changes.fsAgenda) { state.agenda = changes.fsAgenda.newValue || []; paintAgenda(); }
       if (changes.fsSettings) state.settings = { ...DEFAULTS, ...(changes.fsSettings.newValue || {}) };
       renderBlocks();
       updatePanel();
@@ -749,6 +922,7 @@
 
   load().then(() => {
     fillTimezones();
+    paintAgenda();
     renderBlocks();
     updatePanel();
   });
