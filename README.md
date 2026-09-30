@@ -7,8 +7,9 @@ Freeslot is a small Chrome extension. Mark open times directly on your calendar 
 ```
 Jumping in to help find a time for you to connect. Below are a few openings on our end, please let me know if you need more options.
 
-• Mon, Sep 14: 9:30–11:00am, 1:00–2:30pm ET
-• Wed, Sep 16: 10:00am–12:00pm, 3:00–4:00pm ET
+• Thu Oct 8: 2–3:45pm ET
+• Mon Oct 12: 3–5pm ET
+• Mon Oct 19: 9:30–11am, 1:30–4pm ET
 
 Let me know what works best and I'll send across a calendar invite.
 Best,
@@ -73,8 +74,8 @@ Click the **gear icon** in the panel.
 |---|---|
 | Opening message | The paragraph before the list. Leave it blank to skip it. |
 | Closing message | The text after the list, such as a sign-off. Leave it blank to skip it. |
-| Date format | `9/14`, `Mon, Sep 14`, or `Monday, Sep 14` |
-| Time format | `9:00am` or `09:00` |
+| Date format | `10/8`, `Thu Oct 8` (default), or `Thursday, Oct 8` |
+| Time format | `2–3:45pm` or `14:00–15:45` |
 | Include timezone in text | Adds `ET`, `PT` and so on to the end of each line |
 
 Settings are saved in Chrome and kept between sessions.

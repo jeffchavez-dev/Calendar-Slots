@@ -181,7 +181,7 @@
     const m = min % 60;
     if (h24) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     const hh = h % 12 || 12;
-    return `${hh}:${String(m).padStart(2, '0')}${withMer ? (h < 12 ? 'am' : 'pm') : ''}`;
+    return `${hh}${m ? ':' + String(m).padStart(2, '0') : ''}${withMer ? (h < 12 ? 'am' : 'pm') : ''}`; // 2pm, 3:45pm
   }
 
   function fmtRange(s, e, h24) {
@@ -195,7 +195,7 @@
     const weekday = style === 'long' ? 'long' : 'short';
     const s = new Intl.DateTimeFormat('en-US', { weekday, month: 'short', day: 'numeric', timeZone: 'UTC' })
       .format(new Date(Date.UTC(y, m - 1, d)));
-    return s; // "Mon, Sep 14" / "Monday, Sep 14"
+    return style === 'long' ? s : s.replace(',', ''); // "Thu Oct 8" / "Thursday, Oct 8"
   }
 
   // { intro, lines, closing } — lines look like "Mon, Sep 14: 9:30–11:00am, 1:00–2:30pm ET"
@@ -580,14 +580,14 @@
       <label class="field"><span>Closing message</span><textarea class="closing" rows="3" placeholder="Leave blank for no closing"></textarea></label>
       <div class="field"><span>Date format</span>
         <div class="seg" data-key="dateFormat">
-          <button data-v="short">Short<small>9/14</small></button>
-          <button data-v="medium">Medium<small>Mon, Sep 14</small></button>
-          <button data-v="long">Long<small>Monday, Sep 14</small></button>
+          <button data-v="short">Short<small>10/8</small></button>
+          <button data-v="medium">Medium<small>Thu Oct 8</small></button>
+          <button data-v="long">Long<small>Thursday, Oct 8</small></button>
         </div>
       </div>
       <div class="field"><span>Time format</span>
         <div class="seg" data-key="timeFormat">
-          <button data-v="12">12-hour<small>9:00am</small></button>
+          <button data-v="12">12-hour<small>2–3:45pm</small></button>
           <button data-v="24">24-hour<small>09:30</small></button>
         </div>
       </div>
