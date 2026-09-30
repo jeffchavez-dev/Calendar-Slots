@@ -1,0 +1,6 @@
+# Chrome "Pack extension" output — never commit the private key
+*.pem
+*.crx
+*.zip
+
+.DS_Store

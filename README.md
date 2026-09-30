@@ -1,0 +1,138 @@
+# Freeslot
+
+**Drag on Google Calendar to mark when you're free, then copy a ready-to-send availability message.**
+
+Freeslot is a small Chrome extension. Mark open times directly on your calendar grid, pick the recipient's timezone, and copy a message like this:
+
+```
+Jumping in to help find a time for you to connect. Below are a few openings on our end, please let me know if you need more options.
+
+• Mon, Sep 14: 9:30–11:00am, 1:00–2:30pm ET
+• Wed, Sep 16: 10:00am–12:00pm, 3:00–4:00pm ET
+
+Let me know what works best and I'll send across a calendar invite.
+Best,
+```
+
+Nothing is written to your calendar. No account, no server, no tracking.
+
+---
+
+## Features
+
+- **Drag to mark free time** in Day or Week view. Drag across several days to repeat the same slot on each.
+- **Edit slots after you make them**: drag the middle to move a slot (to another time or day), or drag its top or bottom edge to change the start or end.
+- **Timezone presets**: switch the message between **ET, MT, PT** in one click, or pick any other zone under **More**. Times and dates are converted for you, including daylight saving.
+- **Bulleted message** with an opening and a closing line you can edit.
+- **Copy** pastes as a real bulleted list in Gmail, Google Docs and Slack, and as plain `•` bullets anywhere else.
+- **Email** opens a Gmail draft with the message already filled in.
+- **Formats**: short, medium or long dates, and 12- or 24-hour times.
+
+## Install
+
+Freeslot isn't on the Chrome Web Store. You load it from a folder, which takes about a minute.
+
+1. **Get the code.** On this GitHub page, click the green **Code** button, choose **Download ZIP**, and unzip it.
+   You can also clone it with git:
+   ```bash
+   git clone https://github.com/<your-username>/freeslot.git
+   ```
+2. **Move the folder somewhere permanent**, for example `Documents/freeslot`. Chrome runs the extension from this folder, so don't delete it.
+3. Open **`chrome://extensions`** in Chrome.
+4. Turn on **Developer mode** (the switch in the top-right corner).
+5. Click **Load unpacked** and select the `freeslot` folder, the one that contains `manifest.json`.
+   Don't click **Pack extension**. That creates a file for publishing and doesn't install anything.
+6. Optional: click the puzzle-piece icon in Chrome's toolbar and pin **Freeslot**.
+7. Open or reload **[Google Calendar](https://calendar.google.com)** and switch to **Day** or **Week** view.
+
+## How to use
+
+1. Click **Offer times** (bottom-right of Calendar), click the Freeslot toolbar icon, or press **Alt+Shift+O**.
+2. **Drag** on the calendar to mark a free slot. A single click marks 30 minutes.
+3. Adjust as needed:
+
+   | To… | Do this |
+   |---|---|
+   | Repeat a slot on several days | Drag sideways across the days |
+   | Move a slot | Drag its middle |
+   | Change the start or end | Drag its top or bottom edge |
+   | Remove a slot | Hover it and click **×** |
+   | Cancel a drag | Press **Esc** before letting go |
+
+4. Choose the recipient's timezone: **ET**, **MT**, **PT**, or **More**.
+5. Click **Copy** (⌘C / Ctrl+C) or **Email** (⌘⇧E / Ctrl+Shift+E).
+6. Click **Done** or press **Esc** to stop selecting. Your slots stay until you click **Clear all**.
+
+While Freeslot is on, clicking the calendar marks time instead of creating events. Turn it off to use Calendar normally.
+
+## Settings
+
+Click the **gear icon** in the panel.
+
+| Setting | What it does |
+|---|---|
+| Opening message | The paragraph before the list. Leave it blank to skip it. |
+| Closing message | The text after the list, such as a sign-off. Leave it blank to skip it. |
+| Date format | `9/14`, `Mon, Sep 14`, or `Monday, Sep 14` |
+| Time format | `9:00am` or `09:00` |
+| Include timezone in text | Adds `ET`, `PT` and so on to the end of each line |
+
+Settings are saved in Chrome and kept between sessions.
+
+## How timezones work
+
+Freeslot reads your calendar's **primary time zone** from Google Calendar (**Settings → Time zone**), so a block you draw at 1:30pm on the grid means 1:30pm in that zone, whatever your computer's clock is set to. The timezone buttons then convert those times for the person you're sending to.
+
+To see a second zone while you pick times, turn on **Settings → Time zone → Display secondary time zone** in Google Calendar. Freeslot always uses the **primary** zone, which is the column right next to the grid.
+
+## Updating
+
+- **Downloaded ZIP:** download the new version, replace the files in your `freeslot` folder, then go on to the next step.
+- **Cloned with git:** run `git pull` in the folder.
+
+Then open `chrome://extensions`, click the **↻ reload** arrow on the Freeslot card, and reload Google Calendar.
+
+If you had slots marked before updating, click **Clear all** and mark them again.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Freeslot doesn't appear in `chrome://extensions` | Use **Load unpacked** (not **Pack extension**) and select the folder that contains `manifest.json`. |
+| "Blocked by your administrator" or nothing happens | Your Chrome profile is managed by an organization that doesn't allow unpacked extensions. Use a personal Chrome profile, or ask your IT admin. |
+| No **Offer times** button | Reload the Calendar tab. The button only appears on `calendar.google.com`. |
+| "Switch to Day or Week view" | Month, Year and Schedule views don't have a time grid. |
+| Dragging creates Calendar events or feels jumpy | Turn off other Calendar extensions that also handle clicks on the grid, then reload. |
+| Times are off by several hours | Click **Clear all** and mark the slots again. Slots from older versions were saved with a different timezone assumption. |
+
+## Privacy and permissions
+
+| Permission | Why |
+|---|---|
+| `calendar.google.com` | To draw slots on the Calendar page and show the panel |
+| `storage` | To remember your slots and settings, in your browser only |
+| `scripting` | To start Freeslot on a Calendar tab that was already open when you installed it |
+
+Freeslot doesn't read your events, doesn't change your calendar, and doesn't send data anywhere. **Email** opens a Gmail draft in a new tab, and nothing is sent until you press Send.
+
+## Limitations
+
+- Works in Day and Week views, not Month, Year or Schedule.
+- Relies on Google Calendar's page structure. If Google redesigns Calendar, Freeslot may need an update.
+- English date and time formatting only.
+
+## Project structure
+
+```
+freeslot/
+├── manifest.json    Chrome extension manifest (Manifest V3)
+├── background.js    Toolbar button and keyboard shortcut
+├── content.js       Calendar overlay, drag handling, panel and message formatting
+└── icons/           Extension icons (16, 32, 48, 128 px)
+```
+
+There's no build step. Edit the files, click ↻ on the Freeslot card at `chrome://extensions`, and reload Calendar.
+
+## License
+
+[MIT](LICENSE)
